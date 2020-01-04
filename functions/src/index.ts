@@ -55,7 +55,7 @@ export const onMessageUpdate = functions.database.ref('/rooms/{roomId}/messages/
     })
 
 export const onMessageCreate = functions.database.ref('/rooms/{roomId}/messages/{messageId}')
-    .onCreate((snapshot, context) => {
+    .onCreate(async (snapshot, context) => {
         const roomId = context.params.roomId
         const messageId = context.params.messageId
 
@@ -63,7 +63,20 @@ export const onMessageCreate = functions.database.ref('/rooms/{roomId}/messages/
 
         const messageData = snapshot.val()
         const text = addPizzazz(messageData.text)
-        return snapshot.ref.update({ text })
+        await snapshot.ref.update({ text })
+
+        const countRef = snapshot.ref.parent?.parent?.child('messageCount')
+        return countRef?.transaction(count => {
+            return count + 1
+        })
+    })
+
+export const onMessageDelete = functions.database.ref('/rooms/{roomId}/messages/{messageId}')
+    .onDelete(async (snapshot, context) => {
+        const countRef = snapshot.ref.parent?.parent?.child('messageCount')
+        return countRef?.transaction(count => {
+            return count - 1
+        })
     })
 
 function addPizzazz(text: string): string {
