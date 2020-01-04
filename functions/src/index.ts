@@ -22,40 +22,38 @@ export const onBostonWeatherUpdate =
             })
     })
 
-export const getBostonAreaWeather = functions.https.onRequest((req, res) => {
-    admin.firestore().doc('areas/greater-boston').get()
-        .then(areaSnapshot => {
-            const cities = areaSnapshot.data()?.cities
-            const promises = []
-            for (const city in cities) {
-                const p = admin.firestore().doc(`cities-weather/${city}`).get()
-                promises.push(p)
-            }
-            return Promise.all(promises)
+export const getBostonAreaWeather = functions.https.onRequest(async (req, res) => {
+    try {
+        const areaSnapshot = await admin.firestore().doc('areas/greater-boston').get()
+        const cities = areaSnapshot.data()?.cities
+        const promises = []
+        for (const city in cities) {
+            const p = admin.firestore().doc(`cities-weather/${city}`).get()
+            promises.push(p)
+        }
+        const snapshots = await Promise.all(promises)
+        const results: (FirebaseFirestore.DocumentData | undefined)[] = []
+        snapshots.forEach(citySnap => {
+            const data = citySnap.data()
+            data!.city = citySnap.id
+            results.push(data)
         })
-        .then(citySnapshots => {
-            const results: (FirebaseFirestore.DocumentData | undefined)[] = []
-            citySnapshots.forEach(citySnap => {
-                const data = citySnap.data()
-                data!.city = citySnap.id
-                results.push(data)
-            })
-            res.send(results)
-        })
-        .catch(error => {
-            console.log(error)
-            res.status(500).send(error)
-        })
+        res.send(results)
+    } catch (error) {
+        console.log(error)
+        res.status(500).send(error)
+    }
+
+
 })
 
-export const getBostonWheather = functions.https.onRequest((request, response) => {
-    admin.firestore().doc('cities-weather/boston-ma-us').get()
-        .then(snapshot => {
-            console.log(snapshot.data(), 'test dsf woi')
-            response.send(snapshot.data())
-        })
-        .catch(error => {
-            console.log(error)
-            response.status(500).send("Hello from Firebase!" + error);
-        })
+export const getBostonWheather = functions.https.onRequest(async (request, response) => {
+    try {
+        const snapshot = await admin.firestore().doc('cities-weather/boston-ma-us').get()
+        const data = snapshot.data()
+        response.send(data)
+    } catch (error) {
+        console.log(error)
+        response.status(500).send("Hello from Firebase!" + error);
+    }
 });
